@@ -76,3 +76,10 @@ yarn-error.log*
 # Misc
 *.DS_Store
 Thumbs.db
+# Alembic
+alembic/versions/__pycache__/
+alembic/versions/*.pyc
+alembic/versions/*.pyo
+alembic/versions/*.pyd
+alembic/__pycache__/
+alembic.log
