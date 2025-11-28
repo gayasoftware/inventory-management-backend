@@ -24,9 +24,23 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
+class CategoryBase(BaseModel):
+    name: str
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class Category(CategoryBase):
+    id: int
+    # items field removed to prevent recursion loop
+
+    class Config:
+        from_attributes = True
+
 class ItemBase(BaseModel):
     name: str
     price: float
+    margin: float = 0.0
     quantity: int = 0
     reorder_level: int = 10
     category_id: int
@@ -36,23 +50,13 @@ class ItemCreate(ItemBase):
 
 class Item(ItemBase):
     id: int
-    category: Optional['Category'] = None
+    category: Optional[Category] = None
 
     class Config:
         from_attributes = True
 
-class CategoryBase(BaseModel):
-    name: str
-
-class CategoryCreate(CategoryBase):
-    pass
-
-class Category(CategoryBase):
-    id: int
+class CategoryWithItems(Category):
     items: List[Item] = []
-
-    class Config:
-        from_attributes = True
 
 class TransactionBase(BaseModel):
     item_id: int
@@ -71,5 +75,3 @@ class Transaction(TransactionBase):
 
     class Config:
         from_attributes = True
-
-Item.model_rebuild()

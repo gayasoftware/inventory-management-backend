@@ -35,6 +35,7 @@ class Item(Base):
     name = Column(String, index=True)
     category_id = Column(Integer, ForeignKey("categories.id"))
     price = Column(Float)
+    margin = Column(Float, default=0.0)
     quantity = Column(Integer, default=0)
     reorder_level = Column(Integer, default=10)
 

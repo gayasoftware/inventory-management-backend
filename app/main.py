@@ -5,6 +5,21 @@ from .routers import auth, items, transactions
 
 models.Base.metadata.create_all(bind=database.engine)
 
+# Auto-migration for margin column
+from sqlalchemy import text, inspect
+try:
+    inspector = inspect(database.engine)
+    if inspector.has_table("items"):
+        columns = [c["name"] for c in inspector.get_columns("items")]
+        if "margin" not in columns:
+            print("Migrating database: Adding 'margin' column to 'items' table...")
+            with database.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE items ADD COLUMN margin FLOAT DEFAULT 0.0"))
+                conn.commit()
+            print("Migration successful.")
+except Exception as e:
+    print(f"Migration failed: {e}")
+
 app = FastAPI(title="Inventory Management System")
 
 origins = [
