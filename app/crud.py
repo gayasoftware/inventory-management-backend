@@ -15,7 +15,14 @@ def get_user(db: Session, username: str):
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
-    db_user = models.User(username=user.username, hashed_password=hashed_password, role=user.role)
+    db_user = models.User(
+        username=user.username,
+        hashed_password=hashed_password,
+        role=user.role,
+        full_name=user.full_name,
+        email=user.email,
+        address=user.address
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -101,3 +108,52 @@ def create_transaction(db: Session, transaction: schemas.TransactionCreate, user
 
 def get_transactions(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Transaction).offset(skip).limit(limit).all()
+
+def create_order(db: Session, order: schemas.OrderCreate):
+    # Calculate total amount
+    total = sum(item.quantity * item.price for item in order.order_items)
+    
+    db_order = models.Order(
+        customer_id=order.customer_id,
+        total_amount=total,
+        delivery_address=order.delivery_address,
+        status=order.status
+    )
+    db.add(db_order)
+    db.commit()
+    db.refresh(db_order)
+    
+    # Create order items and reduce stock
+    for order_item in order.order_items:
+        item = db.query(models.Item).filter(models.Item.id == order_item.item_id).first()
+        if item and item.quantity >= order_item.quantity:
+            item.quantity -= order_item.quantity
+            db_order_item = models.OrderItem(
+                order_id=db_order.id,
+                item_id=order_item.item_id,
+                quantity=order_item.quantity,
+                price=order_item.price
+            )
+            db.add(db_order_item)
+        else:
+            # Revert or error
+            db.rollback()
+            raise ValueError("Insufficient stock for item")
+    db.commit()
+    return db_order
+
+def get_orders(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Order).offset(skip).limit(limit).all()
+
+def get_customer_orders(db: Session, customer_id: int):
+    return db.query(models.Order).filter(models.Order.customer_id == customer_id).all()
+
+def update_order_status(db: Session, order_id: int, status: models.OrderStatus):
+    db_order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if db_order:
+        db_order.status = status
+        if status == models.OrderStatus.delivered:
+            db_order.delivery_date = models.datetime.utcnow()
+        db.commit()
+        db.refresh(db_order)
+    return db_order

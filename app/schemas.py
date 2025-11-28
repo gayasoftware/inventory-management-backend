@@ -1,14 +1,17 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
-from .models import Role, TransactionType
+from .models import Role, TransactionType, OrderStatus
 
 class UserBase(BaseModel):
     username: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
-    role: Role = Role.staff
+    role: Role = Role.customer
 
 class User(UserBase):
     id: int
@@ -16,6 +19,42 @@ class User(UserBase):
 
     class Config:
         from_attributes = True
+
+class OrderItemBase(BaseModel):
+    item_id: int
+    quantity: int
+    price: float
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItem(OrderItemBase):
+    id: int
+    order_id: int
+
+    class Config:
+        from_attributes = True
+
+class OrderBase(BaseModel):
+    customer_id: int
+    delivery_address: str
+    status: OrderStatus = OrderStatus.pending
+
+class OrderCreate(OrderBase):
+    order_items: List[OrderItemCreate]
+
+class Order(OrderBase):
+    id: int
+    order_date: datetime
+    total_amount: float
+    delivery_date: Optional[datetime] = None
+    order_items: List[OrderItem] = []
+
+    class Config:
+        from_attributes = True
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus
 
 class Token(BaseModel):
     access_token: str

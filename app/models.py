@@ -7,6 +7,14 @@ from datetime import datetime
 class Role(str, enum.Enum):
     admin = "admin"
     staff = "staff"
+    customer = "customer"
+
+class OrderStatus(str, enum.Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    shipped = "shipped"
+    delivered = "delivered"
+    cancelled = "cancelled"
 
 class TransactionType(str, enum.Enum):
     purchase = "purchase"
@@ -19,6 +27,9 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     role = Column(String, default=Role.staff)
+    full_name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    address = Column(String, nullable=True)  # For delivery
 
 class Category(Base):
     __tablename__ = "categories"
@@ -56,3 +67,29 @@ class Transaction(Base):
 
     item = relationship("Item", back_populates="transactions")
     user = relationship("User")
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(Enum(OrderStatus), default=OrderStatus.pending)
+    order_date = Column(DateTime, default=datetime.utcnow)
+    delivery_date = Column(DateTime, nullable=True)
+    total_amount = Column(Float)
+    delivery_address = Column(String)
+
+    customer = relationship("User")
+    order_items = relationship("OrderItem", back_populates="order")
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"))
+    item_id = Column(Integer, ForeignKey("items.id"))
+    quantity = Column(Integer)
+    price = Column(Float)  # Price at time of order
+
+    order = relationship("Order", back_populates="order_items")
+    item = relationship("Item")

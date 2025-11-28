@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .. import crud, models, schemas, database
 from ..utils import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from ..dependencies import get_current_active_user
 
 router = APIRouter(
     prefix="/auth",
@@ -35,3 +36,17 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(database.get_d
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user)
+
+@router.get("/me", response_model=schemas.User)
+def read_users_me(current_user: schemas.User = Depends(get_current_active_user)):
+    return current_user
+
+@router.put("/me", response_model=schemas.User)
+def update_user_profile(user_update: schemas.UserBase, db: Session = Depends(database.get_db), current_user: schemas.User = Depends(get_current_active_user)):
+    # Only allow updating certain fields (not username, role)
+    update_data = user_update.dict(exclude_unset=True, exclude={'username', 'role'})
+    for key, value in update_data.items():
+        setattr(current_user, key, value)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
