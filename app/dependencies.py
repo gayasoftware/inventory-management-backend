@@ -31,5 +31,5 @@ async def get_current_active_user(current_user: Annotated[schemas.User, Depends(
 
 async def get_current_admin_user(current_user: Annotated[schemas.User, Depends(get_current_user)]):
     if current_user.role != models.Role.admin:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=403, detail="Admin privileges required")
     return current_user

@@ -25,6 +25,11 @@ def get_items(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Item).offset(skip).limit(limit).all()
 
 def create_item(db: Session, item: schemas.ItemCreate):
+    # Check if category exists
+    db_category = db.query(models.Category).filter(models.Category.id == item.category_id).first()
+    if not db_category:
+        return None
+    
     db_item = models.Item(**item.dict())
     db.add(db_item)
     db.commit()
@@ -94,6 +99,22 @@ def create_category(db: Session, category: schemas.CategoryCreate):
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
+    db.refresh(db_category)
+    return db_category
+
+def update_category(db: Session, category_id: int, category: schemas.CategoryCreate):
+    db_category = db.query(models.Category).filter(models.Category.id == category_id).first()
+    if db_category:
+        db_category.name = category.name
+        db.commit()
+        db.refresh(db_category)
+    return db_category
+
+def delete_category(db: Session, category_id: int):
+    db_category = db.query(models.Category).filter(models.Category.id == category_id).first()
+    if db_category:
+        db.delete(db_category)
+        db.commit()
     return db_category
 
 def create_transaction(db: Session, transaction: schemas.TransactionCreate, user_id: int):
