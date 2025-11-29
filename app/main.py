@@ -1,24 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from . import models, database
-from .routers import auth, items, transactions, orders
+from .routers import auth, products, orders, inventory, users
 
 models.Base.metadata.create_all(bind=database.engine)
-
-# Auto-migration for margin column
-from sqlalchemy import text, inspect
-try:
-    inspector = inspect(database.engine)
-    if inspector.has_table("items"):
-        columns = [c["name"] for c in inspector.get_columns("items")]
-        if "margin" not in columns:
-            print("Migrating database: Adding 'margin' column to 'items' table...")
-            with database.engine.connect() as conn:
-                conn.execute(text("ALTER TABLE items ADD COLUMN margin FLOAT DEFAULT 0.0"))
-                conn.commit()
-            print("Migration successful.")
-except Exception as e:
-    print(f"Migration failed: {e}")
 
 app = FastAPI(title="Inventory Management System")
 
@@ -36,9 +21,10 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(items.router)
-app.include_router(transactions.router)
+app.include_router(products.router)
 app.include_router(orders.router)
+app.include_router(inventory.router)
+app.include_router(users.router)
 
 @app.get("/")
 def read_root():

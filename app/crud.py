@@ -21,7 +21,7 @@ def create_user(db: Session, user: schemas.UserCreate):
         role=user.role,
         full_name=user.full_name,
         email=user.email,
-        address=user.address
+        phone_number=user.phone_number
     )
     db.add(db_user)
     db.commit()
@@ -112,33 +112,28 @@ def get_transactions(db: Session, skip: int = 0, limit: int = 100):
 def create_order(db: Session, order: schemas.OrderCreate):
     # Calculate total amount
     total = sum(item.quantity * item.price for item in order.order_items)
-    
+
     db_order = models.Order(
         customer_id=order.customer_id,
         total_amount=total,
-        delivery_address=order.delivery_address,
+        shipping_address_id=getattr(order, 'shipping_address_id', None),
         status=order.status
     )
     db.add(db_order)
     db.commit()
     db.refresh(db_order)
-    
+
     # Create order items and reduce stock
     for order_item in order.order_items:
-        item = db.query(models.Item).filter(models.Item.id == order_item.item_id).first()
-        if item and item.quantity >= order_item.quantity:
-            item.quantity -= order_item.quantity
-            db_order_item = models.OrderItem(
-                order_id=db_order.id,
-                item_id=order_item.item_id,
-                quantity=order_item.quantity,
-                price=order_item.price
-            )
-            db.add(db_order_item)
-        else:
-            # Revert or error
-            db.rollback()
-            raise ValueError("Insufficient stock for item")
+        sku = db.query(models.SKU).filter(models.SKU.id == order_item.sku_id).first()
+        # TODO: Implement stock reduction logic
+        db_order_item = models.OrderItem(
+            order_id=db_order.id,
+            sku_id=order_item.sku_id,
+            quantity=order_item.quantity,
+            price=order_item.price
+        )
+        db.add(db_order_item)
     db.commit()
     return db_order
 
@@ -157,3 +152,30 @@ def update_order_status(db: Session, order_id: int, status: models.OrderStatus):
         db.commit()
         db.refresh(db_order)
     return db_order
+
+# Address CRUD
+def create_address(db: Session, address: schemas.AddressCreate, user_id: int):
+    db_address = models.Address(**address.dict(), user_id=user_id)
+    db.add(db_address)
+    db.commit()
+    db.refresh(db_address)
+    return db_address
+
+def get_user_addresses(db: Session, user_id: int):
+    return db.query(models.Address).filter(models.Address.user_id == user_id).all()
+
+def update_address(db: Session, address_id: int, address: schemas.AddressCreate, user_id: int):
+    db_address = db.query(models.Address).filter(models.Address.id == address_id, models.Address.user_id == user_id).first()
+    if db_address:
+        for key, value in address.dict(exclude_unset=True).items():
+            setattr(db_address, key, value)
+        db.commit()
+        db.refresh(db_address)
+    return db_address
+
+def delete_address(db: Session, address_id: int, user_id: int):
+    db_address = db.query(models.Address).filter(models.Address.id == address_id, models.Address.user_id == user_id).first()
+    if db_address:
+        db.delete(db_address)
+        db.commit()
+    return db_address
